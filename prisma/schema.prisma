@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum PerfusionMode {
+  HOPE
+  NMP
+  TRANSITION
+}
+
+enum SystemState {
+  OK
+  WARN
+  EMERG
+  FAULT
+}
+
+enum AlarmSeverity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+model PerfusionRun {
+  id            Int           @id @default(autoincrement())
+  runCode       String        @unique
+  startedAt     DateTime      @default(now())
+  endedAt       DateTime?
+
+  operatorName  String?
+  organType     String?
+  organMass_g   Float?
+
+  mode          PerfusionMode @default(HOPE)
+  protocolName  String?
+  notes         String?
+
+  readings      Reading[]
+  events        AlarmEvent[]
+  setpoints     SetpointSnapshot[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Reading {
+  id                 Int           @id @default(autoincrement())
+  runId              Int
+  timestamp          DateTime      @default(now())
+
+  seq                Int?
+  sourceTimestamp_ms BigInt?
+
+  mode               PerfusionMode
+  systemState        SystemState
+
+  pvPressure_mmHg    Float?
+  haPressure_mmHg    Float?
+
+  pvFlow_mLmin       Float?
+  haFlow_mLmin       Float?
+
+  tempBath_C         Float?
+  tempInflow_C       Float?
+  tempPostHX_C       Float?
+  tempOrganSurface_C Float?
+
+  o2GasConc_pct      Float?
+  o2GasFlow_Lmin     Float?
+  o2SensorTemp_C     Float?
+
+  powerBus_V         Float?
+
+  pressureWarning    Boolean       @default(false)
+  pressureEmergency  Boolean       @default(false)
+  tempWarning        Boolean       @default(false)
+  oxygenWarning      Boolean       @default(false)
+  safetyTriggered    Boolean       @default(false)
+
+  pvPumpCmd_percent  Float?
+  haPumpCmd_percent  Float?
+  pumpEnabled        Boolean?
+
+  run                PerfusionRun  @relation(fields: [runId], references: [id])
+
+  @@index([runId])
+  @@index([timestamp])
+  @@unique([runId, timestamp])
+}
+
+model AlarmEvent {
+  id              Int           @id @default(autoincrement())
+  runId           Int?
+  timestamp       DateTime      @default(now())
+
+  eventType       String
+  severity        AlarmSeverity @default(WARN)
+  description     String?
+
+  mode            PerfusionMode?
+  systemState     SystemState?
+
+  acknowledged    Boolean       @default(false)
+  acknowledgedAt  DateTime?
+  resolved        Boolean       @default(false)
+  resolvedAt      DateTime?
+
+  run             PerfusionRun? @relation(fields: [runId], references: [id])
+
+  @@index([runId])
+  @@index([timestamp])
+  @@index([eventType])
+}
+
+model SetpointSnapshot {
+  id                    Int           @id @default(autoincrement())
+  runId                 Int
+  timestamp             DateTime      @default(now())
+  mode                  PerfusionMode
+
+  liverMass_g           Float?
+
+  tempBathTarget_C      Float?
+  tempInflowTarget_C    Float?
+
+  pvFlowTarget_mLmin    Float?
+  haFlowTarget_mLmin    Float?
+
+  pvPressureTarget_mmHg Float?
+  haPressureTarget_mmHg Float?
+
+  o2GasConcTarget_pct   Float?
+  o2GasFlowTarget_Lmin  Float?
+
+  warmRate_C_per_min    Float?
+
+  run                   PerfusionRun  @relation(fields: [runId], references: [id])
+
+  @@index([runId])
+  @@index([timestamp])
+}
