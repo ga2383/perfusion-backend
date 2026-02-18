@@ -58,22 +58,22 @@ model Reading {
   mode               PerfusionMode
   systemState        SystemState
 
-  pvPressure_mmHg    Float?
-  haPressure_mmHg    Float?
+  pvPressure_mmHg    Float
+  haPressure_mmHg    Float
 
-  pvFlow_mLmin       Float?
-  haFlow_mLmin       Float?
+  pvFlow_mLmin       Float
+  haFlow_mLmin       Float
 
-  tempBath_C         Float?
-  tempInflow_C       Float?
-  tempPostHX_C       Float?
-  tempOrganSurface_C Float?
+  tempBath_C         Float
+  tempInflow_C       Float
+  tempPostHX_C       Float
+  tempOrganSurface_C Float
 
-  o2GasConc_pct      Float?
-  o2GasFlow_Lmin     Float?
-  o2SensorTemp_C     Float?
+  o2GasConc_pct      Float
+  o2GasFlow_Lmin     Float
+  o2SensorTemp_C     Float
 
-  powerBus_V         Float?
+  powerBus_V         Float
 
   pressureWarning    Boolean       @default(false)
   pressureEmergency  Boolean       @default(false)
