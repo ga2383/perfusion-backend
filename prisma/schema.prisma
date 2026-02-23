@@ -4,9 +4,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL"
-
+  url      = env("DATABASE_URL")
 }
+
+//
+// ENUMS
+//
 
 enum PerfusionMode {
   HOPE
@@ -15,152 +18,105 @@ enum PerfusionMode {
 }
 
 enum SystemState {
+  IDLE
+  PRIMING
+  RUNNING
+  PAUSED
+  STOPPED
+  ERROR
+}
+
+enum FlagLevel {
   OK
   WARN
-  EMERG
-  FAULT
+  EMERGENCY
+  SENSOR_FAIL
+  DISCONNECTED
+  UNKNOWN
 }
 
-enum AlarmSeverity {
-  INFO
-  WARN
-  CRITICAL
+//
+// MODELS
+//
+
+model HopeRun {
+  id          Int            @id @default(autoincrement())
+  startedAt   DateTime       @default(now())
+  finishedAt  DateTime?
+  mode        PerfusionMode  @default(HOPE)
+  state       SystemState    @default(IDLE)
+
+  readings    HopeReading[]
+  alarms      AlarmEvent[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
-model PerfusionRun {
-  id            Int           @id @default(autoincrement())
-  runCode       String        @unique
-  startedAt     DateTime      @default(now())
-  endedAt       DateTime?
+model NmpRun {
+  id          Int            @id @default(autoincrement())
+  startedAt   DateTime       @default(now())
+  finishedAt  DateTime?
+  mode        PerfusionMode  @default(NMP)
+  state       SystemState    @default(IDLE)
 
-  operatorName  String?
-  organType     String?
-  organMass_g   Float?
+  readings    NmpReading[]
+  alarms      AlarmEvent[]
 
-  mode          PerfusionMode @default(HOPE)
-  protocolName  String?
-  notes         String?
-
-  readings      Reading[]
-  events        AlarmEvent[]
-  setpoints     SetpointSnapshot[]
-
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
-model Reading {
-  id                 Int           @id @default(autoincrement())
-  runId              Int
-  timestamp          DateTime      @default(now())
+model HopeReading {
+  id          Int        @id @default(autoincrement())
+  runId       Int
+  run         HopeRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
 
-  seq                Int?
-  sourceTimestamp_ms BigInt?
+  temperature Float?
+  pressure    Float?
+  flowRate    Float?
+  oxygen      Float?
 
-  mode               PerfusionMode
-  systemState        SystemState
+  flag        FlagLevel  @default(OK)
 
-<<<<<<< HEAD
-  pvPressure_mmHg    Float
-  haPressure_mmHg    Float
+  createdAt   DateTime   @default(now())
 
-  pvFlow_mLmin       Float
-  haFlow_mLmin       Float
+  @@index([runId, createdAt])
+}
 
-  tempBath_C         Float
-  tempInflow_C       Float
-  tempPostHX_C       Float
-  tempOrganSurface_C Float
+model NmpReading {
+  id          Int        @id @default(autoincrement())
+  runId       Int
+  run         NmpRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
 
-  o2GasConc_pct      Float
-  o2GasFlow_Lmin     Float
-  o2SensorTemp_C     Float
+  temperature Float?
+  pressure    Float?
+  flowRate    Float?
+  oxygen      Float?
+  ph          Float?
+  lactate     Float?
 
-  powerBus_V         Float
-=======
-  pvPressure_mmHg    Float?
-  haPressure_mmHg    Float?
+  flag        FlagLevel  @default(OK)
 
-  pvFlow_mLmin       Float?
-  haFlow_mLmin       Float?
+  createdAt   DateTime   @default(now())
 
-  tempBath_C         Float?
-  tempInflow_C       Float?
-  tempPostHX_C       Float?
-  tempOrganSurface_C Float?
-
-  o2GasConc_pct      Float?
-  o2GasFlow_Lmin     Float?
-  o2SensorTemp_C     Float?
-
-  powerBus_V         Float?
->>>>>>> f1ace13 (Initial perfusion backend)
-
-  pressureWarning    Boolean       @default(false)
-  pressureEmergency  Boolean       @default(false)
-  tempWarning        Boolean       @default(false)
-  oxygenWarning      Boolean       @default(false)
-  safetyTriggered    Boolean       @default(false)
-
-  pvPumpCmd_percent  Float?
-  haPumpCmd_percent  Float?
-  pumpEnabled        Boolean?
-
-  run                PerfusionRun  @relation(fields: [runId], references: [id])
-
-  @@index([runId])
-  @@index([timestamp])
-  @@unique([runId, timestamp])
+  @@index([runId, createdAt])
 }
 
 model AlarmEvent {
-  id              Int           @id @default(autoincrement())
-  runId           Int?
-  timestamp       DateTime      @default(now())
+  id          Int        @id @default(autoincrement())
 
-  eventType       String
-  severity        AlarmSeverity @default(WARN)
-  description     String?
+  hopeRunId   Int?
+  nmpRunId    Int?
 
-  mode            PerfusionMode?
-  systemState     SystemState?
+  hopeRun     HopeRun?   @relation(fields: [hopeRunId], references: [id], onDelete: Cascade)
+  nmpRun      NmpRun?    @relation(fields: [nmpRunId], references: [id], onDelete: Cascade)
 
-  acknowledged    Boolean       @default(false)
-  acknowledgedAt  DateTime?
-  resolved        Boolean       @default(false)
-  resolvedAt      DateTime?
+  message     String
+  level       FlagLevel
+  acknowledged Boolean   @default(false)
 
-  run             PerfusionRun? @relation(fields: [runId], references: [id])
+  createdAt   DateTime   @default(now())
 
-  @@index([runId])
-  @@index([timestamp])
-  @@index([eventType])
-}
-
-model SetpointSnapshot {
-  id                    Int           @id @default(autoincrement())
-  runId                 Int
-  timestamp             DateTime      @default(now())
-  mode                  PerfusionMode
-
-  liverMass_g           Float?
-
-  tempBathTarget_C      Float?
-  tempInflowTarget_C    Float?
-
-  pvFlowTarget_mLmin    Float?
-  haFlowTarget_mLmin    Float?
-
-  pvPressureTarget_mmHg Float?
-  haPressureTarget_mmHg Float?
-
-  o2GasConcTarget_pct   Float?
-  o2GasFlowTarget_Lmin  Float?
-
-  warmRate_C_per_min    Float?
-
-  run                   PerfusionRun  @relation(fields: [runId], references: [id])
-
-  @@index([runId])
-  @@index([timestamp])
+  @@index([createdAt])
 }

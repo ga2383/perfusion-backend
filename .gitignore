@@ -1,3 +1,15 @@
-node_modules
-perfusion.db
+# env / secrets
 .env
+.env.*
+
+# node
+node_modules/
+
+# mac
+.DS_Store
+
+# local DB files
+*.db
+
+# generated excel output
+excel_templates/
