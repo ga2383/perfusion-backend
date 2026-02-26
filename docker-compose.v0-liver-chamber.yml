@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-retailuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-retailpass}
+      POSTGRES_DB: ${POSTGRES_DB:-retaildb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - perfusion-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perfusion-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AUTH_DISABLED=${AUTH_DISABLED:-true}
+      - DEV_ALLOW_TEST_ROUTE=${DEV_ALLOW_TEST_ROUTE:-true}
+      - V0_API_KEY=${V0_API_KEY}
+    depends_on:
+      - postgres
+    networks:
+      - perfusion-network
+
+  ws:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perfusion-ws
+    restart: unless-stopped
+    command: npm run ws
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      - backend
+    networks:
+      - perfusion-network
+
+  frontend:
+    # Build the frontend from a configurable path. Set FRONTEND_CONTEXT to the path of the v0-liver-chamber frontend.
+    build:
+      context: ${FRONTEND_CONTEXT:-./frontend}
+      dockerfile: Dockerfile
+    container_name: v0-liver-chamber-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://backend:3001}
+      - V0_API_KEY=${V0_API_KEY}
+    depends_on:
+      - backend
+    networks:
+      - perfusion-network
+
+volumes:
+  postgres_data:
+
+networks:
+  perfusion-network:
+    driver: bridge
